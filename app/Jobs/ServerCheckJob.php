@@ -47,57 +47,57 @@ class ServerCheckJob implements ShouldBeEncrypted, ShouldQueue
                 }
                 GetContainersStatus::run($this->server, $this->containers, $containerReplicates);
 
-                if ($this->server->isSentinelEnabled()) {
-                    CheckAndStartSentinelJob::dispatch($this->server);
-                }
+                // if ($this->server->isSentinelEnabled()) {
+                //     CheckAndStartSentinelJob::dispatch($this->server);
+                // }
 
-                if ($this->server->isLogDrainEnabled()) {
-                    $this->checkLogDrainContainer();
-                }
+                // if ($this->server->isLogDrainEnabled()) {
+                //     $this->checkLogDrainContainer();
+                // }
 
-                if ($this->server->proxySet() && ! $this->server->proxy->force_stop) {
-                    $this->server->proxyType();
-                    $foundProxyContainer = $this->containers->filter(function ($value, $key) {
-                        if ($this->server->isSwarm()) {
-                            return data_get($value, 'Spec.Name') === 'coolify-proxy_traefik';
-                        } else {
-                            return data_get($value, 'Name') === '/coolify-proxy';
-                        }
-                    })->first();
-                    if (! $foundProxyContainer) {
-                        try {
-                            $shouldStart = CheckProxy::run($this->server);
-                            if ($shouldStart) {
-                                StartProxy::run($this->server, async: false);
-                                $this->server->team?->notify(new ContainerRestarted('coolify-proxy', $this->server));
-                            }
-                        } catch (\Throwable $e) {
-                        }
-                    } else {
-                        $this->server->proxy->status = data_get($foundProxyContainer, 'State.Status');
-                        $this->server->save();
-                        $connectProxyToDockerNetworks = connectProxyToNetworks($this->server);
-                        instant_remote_process($connectProxyToDockerNetworks, $this->server, false);
-                    }
-                }
+                // if ($this->server->proxySet() && ! $this->server->proxy->force_stop) {
+                //     $this->server->proxyType();
+                //     $foundProxyContainer = $this->containers->filter(function ($value, $key) {
+                //         if ($this->server->isSwarm()) {
+                //             return data_get($value, 'Spec.Name') === 'coolify-proxy_traefik';
+                //         } else {
+                //             return data_get($value, 'Name') === '/coolify-proxy';
+                //         }
+                //     })->first();
+                //     if (! $foundProxyContainer) {
+                //         try {
+                //             $shouldStart = CheckProxy::run($this->server);
+                //             if ($shouldStart) {
+                //                 StartProxy::run($this->server, async: false);
+                //                 $this->server->team?->notify(new ContainerRestarted('coolify-proxy', $this->server));
+                //             }
+                //         } catch (\Throwable $e) {
+                //         }
+                //     } else {
+                //         $this->server->proxy->status = data_get($foundProxyContainer, 'State.Status');
+                //         $this->server->save();
+                //         $connectProxyToDockerNetworks = connectProxyToNetworks($this->server);
+                //         instant_remote_process($connectProxyToDockerNetworks, $this->server, false);
+                //     }
+                // }
             }
         } catch (\Throwable $e) {
             return handleError($e);
         }
     }
 
-    private function checkLogDrainContainer()
-    {
-        $foundLogDrainContainer = $this->containers->filter(function ($value, $key) {
-            return data_get($value, 'Name') === '/coolify-log-drain';
-        })->first();
-        if ($foundLogDrainContainer) {
-            $status = data_get($foundLogDrainContainer, 'State.Status');
-            if ($status !== 'running') {
-                StartLogDrain::dispatch($this->server);
-            }
-        } else {
-            StartLogDrain::dispatch($this->server);
-        }
-    }
+    // private function checkLogDrainContainer()
+    // {
+    //     $foundLogDrainContainer = $this->containers->filter(function ($value, $key) {
+    //         return data_get($value, 'Name') === '/coolify-log-drain';
+    //     })->first();
+    //     if ($foundLogDrainContainer) {
+    //         $status = data_get($foundLogDrainContainer, 'State.Status');
+    //         if ($status !== 'running') {
+    //             StartLogDrain::dispatch($this->server);
+    //         }
+    //     } else {
+    //         StartLogDrain::dispatch($this->server);
+    //     }
+    // }
 }
