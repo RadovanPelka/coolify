@@ -39,11 +39,13 @@ class ServerCheckJob implements ShouldQueue
         //     return 'Server is not reachable or not ready.';
         // }
 
-        // if (! $this->server->isSwarmWorker() && ! $this->server->isBuildServer()) {
-        //     ['containers' => $this->containers, 'containerReplicates' => $containerReplicates] = $this->server->getContainers();
-        //     if (is_null($this->containers)) {
-        //         return 'No containers found.';
-        //     }
+        if (! $this->server->isSwarmWorker() && ! $this->server->isBuildServer()) {
+            ['containers' => $this->containers, 'containerReplicates' => $containerReplicates] = $this->server->getContainers();
+            if (is_null($this->containers)) {
+                return 'No containers found.';
+            }
+        }
+
         //     GetContainersStatus::run($this->server, $this->containers, $containerReplicates); --> THIS CUASES 2 SSH sessions to be opened??
 
         // if ($this->server->isSentinelEnabled()) {
@@ -82,7 +84,6 @@ class ServerCheckJob implements ShouldQueue
         // }
         // } catch (\Throwable $e) {
         //     return handleError($e);
-        // }
     }
 
     // private function checkLogDrainContainer()
