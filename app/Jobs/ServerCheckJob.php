@@ -9,14 +9,13 @@ use App\Actions\Server\StartLogDrain;
 use App\Models\Server;
 use App\Notifications\Container\ContainerRestarted;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 
-class ServerCheckJob implements ShouldBeEncrypted, ShouldQueue
+class ServerCheckJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -36,58 +35,55 @@ class ServerCheckJob implements ShouldBeEncrypted, ShouldQueue
     public function handle()
     {
         // try {
-            if ($this->server->serverStatus() === false) {
-                return 'Server is not reachable or not ready.';
-            }
-            else {
-                echo 'Server is reachable and ready.';
-            }
+        // if ($this->server->serverStatus() === false) {
+        //     return 'Server is not reachable or not ready.';
+        // }
 
-            // if (! $this->server->isSwarmWorker() && ! $this->server->isBuildServer()) {
-            //     ['containers' => $this->containers, 'containerReplicates' => $containerReplicates] = $this->server->getContainers();
-            //     if (is_null($this->containers)) {
-            //         return 'No containers found.';
-            //     }
-            //     GetContainersStatus::run($this->server, $this->containers, $containerReplicates);
+        // if (! $this->server->isSwarmWorker() && ! $this->server->isBuildServer()) {
+        //     ['containers' => $this->containers, 'containerReplicates' => $containerReplicates] = $this->server->getContainers();
+        //     if (is_null($this->containers)) {
+        //         return 'No containers found.';
+        //     }
+        //     GetContainersStatus::run($this->server, $this->containers, $containerReplicates); --> THIS CUASES 2 SSH sessions to be opened??
 
-                // if ($this->server->isSentinelEnabled()) {
-                //     CheckAndStartSentinelJob::dispatch($this->server);
-                // }Yes, but they work the same regardless of the balancing strategy. So, if you set `balance=false`, you can still set `minProcesses` and `maxProcesses`. If you set `minProcesses=1 `and `maxProcesses=4`, 1 process will run in total, even if you have two queues because of balance being set to false. If there is load, Horizon will add up to 3 more workers (total of 4), as it would with any other strategy. This should be reflected somehow, as the current one is confusing to me.
+        // if ($this->server->isSentinelEnabled()) {
+        //     CheckAndStartSentinelJob::dispatch($this->server);
+        // }Yes, but they work the same regardless of the balancing strategy. So, if you set `balance=false`, you can still set `minProcesses` and `maxProcesses`. If you set `minProcesses=1 `and `maxProcesses=4`, 1 process will run in total, even if you have two queues because of balance being set to false. If there is load, Horizon will add up to 3 more workers (total of 4), as it would with any other strategy. This should be reflected somehow, as the current one is confusing to me.
 
-                // if ($this->server->isLogDrainEnabled()) {
-                //     $this->checkLogDrainContainer();
-                // }
+        // if ($this->server->isLogDrainEnabled()) {
+        //     $this->checkLogDrainContainer();
+        // }
 
-                if ($this->server->proxySet() && ! $this->server->proxy->force_stop) {
-                    $this->server->proxyType();
-                    $foundProxyContainer = $this->containers->filter(function ($value, $key) {
-                        if ($this->server->isSwarm()) {
-                            return data_get($value, 'Spec.Name') === 'coolify-proxy_traefik';
-                        } else {
-                            return data_get($value, 'Name') === '/coolify-proxy';
-                        }
-                    })->first();
-                    if (! $foundProxyContainer) {
-                        try {
-                            $shouldStart = CheckProxy::run($this->server);
-                            if ($shouldStart) {
-                                StartProxy::run($this->server, async: false);
-                                $this->server->team?->notify(new ContainerRestarted('coolify-proxy', $this->server));
-                            }
-                        } catch (\Throwable $e) {
-                        }
-                    } else {
-                        $this->server->proxy->status = data_get($foundProxyContainer, 'State.Status');
-                        $this->server->save();
-                        $connectProxyToDockerNetworks = connectProxyToNetworks($this->server);
-                        instant_remote_process($connectProxyToDockerNetworks, $this->server, false);
-                    }
+        if ($this->server->proxySet() && ! $this->server->proxy->force_stop) {
+            $this->server->proxyType();
+            $foundProxyContainer = $this->containers->filter(function ($value, $key) {
+                if ($this->server->isSwarm()) {
+                    return data_get($value, 'Spec.Name') === 'coolify-proxy_traefik';
+                } else {
+                    return data_get($value, 'Name') === '/coolify-proxy';
                 }
-            // }
-    //     } catch (\Throwable $e) {
-    //         return handleError($e);
-    //     }
-    // }
+            })->first();
+            if (! $foundProxyContainer) {
+                try {
+                    $shouldStart = CheckProxy::run($this->server);
+                    if ($shouldStart) {
+                        StartProxy::run($this->server, async: false);
+                        $this->server->team?->notify(new ContainerRestarted('coolify-proxy', $this->server));
+                    }
+                } catch (\Throwable $e) {
+                }
+            } else {
+                $this->server->proxy->status = data_get($foundProxyContainer, 'State.Status');
+                $this->server->save();
+                $connectProxyToDockerNetworks = connectProxyToNetworks($this->server);
+                instant_remote_process($connectProxyToDockerNetworks, $this->server, false);
+            }
+        }
+        // }
+        // } catch (\Throwable $e) {
+        //     return handleError($e);
+        // }
+    }
 
     // private function checkLogDrainContainer()
     // {
